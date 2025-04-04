@@ -1,6 +1,6 @@
 # NetworkingRework
 
-This project is a **BepInEx Harmony patch** for the Unity-based multiplayer game **REPO**, focusing on fixing network latency related delay with physics. If you've played any multiplayer instance of REPO, you've probably noticed a significant difference in fluidity between singleplayer/hosting & being a client (joining a game). Objects appear to 
+This project is a **BepInEx Harmony patch** for the Unity-based multiplayer game **REPO**, focusing on fixing network latency related delay with physics. If you've played any multiplayer instance of REPO, you've probably noticed a significant difference in fluidity between singleplayer/hosting & being a client.
 
 ---
 
