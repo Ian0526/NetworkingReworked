@@ -32,7 +32,7 @@ public class CartOwnershipFixer : MonoBehaviourPun
         var grabber = FindGrabberByViewID(grabberViewID);
         if (grabber != null)
         {
-            grabber.initialPressTimer = 0.1f;
+            grabber.initialPressTimer = 1f;
             Debug.Log("[CartOwnershipFixer] initialPressTimer fixed to 0.1f for " + grabber.name);
         }
     }
