@@ -9,7 +9,7 @@ namespace NoLag.Helper.Utility
         {
             if (PhotonNetwork.NetworkingClient?.LoadBalancingPeer?.RoundTripTime == null)
                 return 999;
-            return PhotonNetwork.GetPing(); // This returns local player ping — for remote players, estimate via RTT manager if needed
+            return PhotonNetwork.GetPing();
         }
 
         public static bool ShouldTransferOwnershipTo(Player currentOwner, Player challenger)

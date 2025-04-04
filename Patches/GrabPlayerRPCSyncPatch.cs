@@ -16,7 +16,6 @@ public static class GrabPlayerAddRPC_Patch
             helper.BeginMonitoring();
         }
 
-        // === Fix cart grab timing sync ===
         if (__instance.TryGetComponent(out PhysGrabCart cart) &&
             __instance.TryGetComponent(out CartOwnershipFixer fixer))
         {
@@ -25,6 +24,7 @@ public static class GrabPlayerAddRPC_Patch
                 if (grabber.isLocal)
                 {
                     fixer.photonView.RPC("FixInitialPressTimerRPC", RpcTarget.Others, grabber.photonView.ViewID);
+                    fixer.FixInitialPressTimerRPC(grabber.photonView.ViewID);
                     Debug.Log($"[CartOwnershipFixer] Sent FixInitialPressTimerRPC to ViewID {grabber.photonView.ViewID} via fallback patch.");
                     break;
                 }

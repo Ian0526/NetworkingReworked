@@ -13,7 +13,6 @@ public static class OwnershipUtils
 
         if (view == null || rb == null || grab == null) return;
 
-        // Optional: sync impact data
         if (syncImpact)
         {
             var detector = target.GetComponent<PhysGrabObjectImpactDetector>();
@@ -26,7 +25,6 @@ public static class OwnershipUtils
             }
         }
 
-        // Optional: sync transform view
         if (syncTransform)
         {
             var ptv = target.GetComponent<PhotonTransformView>();
@@ -40,7 +38,6 @@ public static class OwnershipUtils
             }
         }
 
-        // Perform ownership transfer
         if (view.OwnerActorNr != newOwner.ActorNumber)
         {
             view.TransferOwnership(newOwner);

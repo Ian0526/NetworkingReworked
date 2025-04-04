@@ -90,11 +90,27 @@ public static class DebugPhysGrabObjectDump
         sb.AppendLine("PhotonView:");
         sb.AppendLine(ReflectionUtils.DumpObject(pv, 0, 1));
 
+
         var cart = __instance.GetComponent<PhysGrabCart>();
         if (cart != null && pv.IsMine)
         {
             sb.AppendLine("PhysGrabCart (Owned):");
             sb.AppendLine(ReflectionUtils.DumpObject(cart, 0, 1));
+
+            var grabArea = cart.GetComponent<PhysGrabObjectGrabArea>();
+            if (grabArea != null && grabArea.listOfAllGrabbers.Count > 0)
+            {
+                sb.AppendLine("PhysGrabbers:");
+                foreach (var grabber in grabArea.listOfAllGrabbers)
+                {
+                    sb.AppendLine(grabber != null ? ReflectionUtils.DumpObject(grabber, 0, 1) : "Null grabber");
+                }
+            }
+            else
+            {
+                sb.AppendLine("PhysGrabbers: None or GrabArea missing");
+            }
+
         }
 
         string dump = sb.ToString();
