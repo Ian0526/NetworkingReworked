@@ -35,7 +35,7 @@ This results in a round-trip delay for every interaction, effectively doubling t
 
 The goal of this mod is to offload some of that authority to clients in a controlled and safe manner — reducing latency and improving responsiveness without breaking multiplayer consistency.
 
-![NetworkingRework](https://i.gyazo.com/f555ac106cefcebb03ef7000c3293b52.png)
+![NetworkingRework](https://i.gyazo.com/19baac017b202ed181e24b439e7912f6.png)
 
 ### Patched Behaviors
 
