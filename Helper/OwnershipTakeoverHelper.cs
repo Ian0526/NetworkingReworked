@@ -54,7 +54,10 @@ public class OwnershipTakeoverHelper : MonoBehaviourPun
     private void LateUpdate()
     {
         if (rb == null || view == null) return;
-        rb.isKinematic = !view.IsMine;
+        if (GetComponentInParent<PlayerTumble>() == null)
+        {
+            rb.isKinematic = !view.IsMine;
+        }
     }
 
     private IEnumerator MonitorStability()

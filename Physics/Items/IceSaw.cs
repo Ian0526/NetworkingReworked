@@ -13,12 +13,10 @@ public static class IceSawValuable_Patch
             if (existing != null)
             {
                 __instance.hurtCollider = existing;
-                Debug.Log("[Patch] HurtCollider assigned from child.");
             }
             else
             {
                 __instance.hurtCollider = __instance.gameObject.AddComponent<HurtCollider>();
-                Debug.LogWarning("[Patch] HurtCollider was missing — added dynamically.");
             }
         }
     }

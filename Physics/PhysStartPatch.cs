@@ -8,8 +8,6 @@ public static class PhysStartPatch
     [HarmonyPostfix]
     public static void Postfix(PhysGrabObject __instance)
     {
-        PhotonNetwork.LogLevel = PunLogLevel.Full;
-
         if (!__instance.TryGetComponent(out OwnershipTakeoverHelper _))
         {
             __instance.gameObject.AddComponent<OwnershipCollisionMonitor>();
@@ -23,7 +21,10 @@ public static class PhysStartPatch
             {
                 transformFixer = __instance.gameObject.AddComponent<PhotonViewTransformSync>();
             }
-            transformFixer.ApplyInitialSyncSnapshot(view, rb);
+            if (__instance.GetComponentInParent<PlayerTumble>() == null)
+            {
+                transformFixer.ApplyInitialSyncSnapshot(view, rb);
+            }
 
             var hingeFixer = __instance.GetComponent<HingeSync>();
             var joint = __instance.GetComponent<PhysGrabHinge>();
