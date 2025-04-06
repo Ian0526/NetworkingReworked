@@ -1,7 +1,7 @@
 ﻿using HarmonyLib;
 using UnityEngine;
 using Photon.Pun;
-using NoLag.Physics;
+using NetworkingReworked.Physics;
 
 [HarmonyPatch]
 public static class AttachHelperPatches

@@ -12,7 +12,7 @@ public static class PhysGrabObject_FixedUpdate_Transpiler
     [HarmonyTranspiler]
     public static IEnumerable<CodeInstruction> ReplaceHostChecksWithIsMine(IEnumerable<CodeInstruction> instructions)
     {
-        Debug.Log("[NoLag] Transpiler activated");
+        Debug.Log("[NetworkingReworked] Transpiler activated");
 
         var codes = new List<CodeInstruction>(instructions);
 
@@ -34,28 +34,36 @@ public static class PhysGrabObject_FixedUpdate_Transpiler
                 codes[i] = new CodeInstruction(OpCodes.Ldarg_0);
                 codes.Insert(++i, new CodeInstruction(OpCodes.Callvirt, photonViewGetter));
                 codes.Insert(++i, new CodeInstruction(OpCodes.Callvirt, isMineGetter));
-                Debug.Log("[NoLag] Replaced old 'IsMasterClient' call w/ 'this.photonView.IsMine'");
+                Debug.Log("[NetworkingReworked] Replaced old 'IsMasterClient' call w/ 'this.photonView.IsMine'");
                 replacements++;
             }
             else if (semiFuncMethod != null && code.Calls(semiFuncMethod))
             {
                 codes[i] = new CodeInstruction(OpCodes.Ldarg_0);
                 codes.Insert(++i, new CodeInstruction(OpCodes.Callvirt, photonViewGetter));
-                codes.Insert(++i, new CodeInstruction(OpCodes.Callvirt, isMineGetter));
-                Debug.Log("[NoLag] Replaced old 'SemiFunc.IsMasterClientOrSingleplayer' w/ 'this.photonView.IsMine'");
+                var isMineOrSingleplayerMethod = AccessTools.Method(typeof(PhysGrabObject_FixedUpdate_Transpiler), "GetIsMineOrSingleplayer");
+                codes.Insert(++i, new CodeInstruction(OpCodes.Call, isMineOrSingleplayerMethod));
+                Debug.Log("[NetworkingReworked] Replaced old 'SemiFunc.IsMasterClientOrSingleplayer' w/ 'this.photonView.IsMine'");
                 replacements++;
             }
             else if (isMasterField != null && code.LoadsField(isMasterField))
             {
                 codes[i] = new CodeInstruction(OpCodes.Callvirt, photonViewGetter);
                 codes.Insert(++i, new CodeInstruction(OpCodes.Callvirt, isMineGetter));
-                Debug.Log("[NoLag] Replaced 'isMaster' field read w/ 'this.photonView.IsMine'");
+                Debug.Log("[NetworkingReworked] Replaced 'isMaster' field read w/ 'this.photonView.IsMine'");
                 replacements++;
             }
         }
 
-        Debug.Log($"[NoLag] Done transpiling. Replacements made: {replacements}");
+        Debug.Log($"[NetworkingReworked] Done transpiling. Replacements made: {replacements}");
         return codes;
+    }
+
+    public static bool GetIsMineOrSingleplayer(PhysGrabObject grabObject)
+    {
+        var pv = grabObject.GetComponent<PhotonView>();
+        var isSinglePlayer = !SemiFunc.IsMultiplayer();
+        return (pv != null && pv.IsMine) || isSinglePlayer;
     }
 }
 
@@ -109,7 +117,7 @@ public static class PhysGrabHinge_Awake_Transpiler
             // Detect the start of the block (look for call to Object.Destroy)
             if (!skipping && instr.opcode == OpCodes.Call && instr.operand is MethodInfo mi && mi.Name == "Destroy")
             {
-                Debug.Log("[NoLag] Found Object.Destroy — starting skip block");
+                Debug.Log("[NetworkingReworked] Found Object.Destroy — starting skip block");
 
                 skipping = true;
                 skipCount = 0;
@@ -125,7 +133,7 @@ public static class PhysGrabHinge_Awake_Transpiler
                 // Heuristic: skip ~5 instructions after Destroy
                 if (skipCount > 5)
                 {
-                    Debug.Log("[NoLag] Ending skip block after ~5 instructions");
+                    Debug.Log("[NetworkingReworked] Ending skip block after ~5 instructions");
                     skipping = false;
                 }
 
@@ -186,6 +194,7 @@ public static class PhysGrabObject_OverrideTimersTick_Transpiler
         List<CodeInstruction> codes = new List<CodeInstruction>(instructions);
 
         // Methods we want to replace.
+        MethodInfo getIsMineOrSingleplayer = AccessTools.Method(typeof(PhysGrabObject_OverrideTimersTick_Transpiler), nameof(GetIsMineOrSingleplayer));
         MethodInfo isMasterClientGetter = AccessTools.PropertyGetter(typeof(PhotonNetwork), "IsMasterClient");
         MethodInfo semiFuncMethod = AccessTools.Method(typeof(SemiFunc), "IsMasterClientOrSingleplayer");
         FieldInfo isMasterField = AccessTools.Field(typeof(PhysGrabObject), "isMaster");
@@ -207,7 +216,7 @@ public static class PhysGrabObject_OverrideTimersTick_Transpiler
                 codes[i] = newInstr;
                 codes.Insert(++i, new CodeInstruction(OpCodes.Callvirt, photonViewGetter));
                 codes.Insert(++i, new CodeInstruction(OpCodes.Callvirt, isMineGetter));
-                Debug.Log("[NoLag] Replaced 'PhotonNetwork.IsMasterClient' call with 'this.photonView.IsMine'");
+                Debug.Log("[NetworkingReworked] Replaced 'PhotonNetwork.IsMasterClient' call with 'this.photonView.IsMine'");
             }
             else if (semiFuncMethod != null && code.Calls(semiFuncMethod))
             {
@@ -216,8 +225,8 @@ public static class PhysGrabObject_OverrideTimersTick_Transpiler
                 newInstr.labels.AddRange(labels);
                 codes[i] = newInstr;
                 codes.Insert(++i, new CodeInstruction(OpCodes.Callvirt, photonViewGetter));
-                codes.Insert(++i, new CodeInstruction(OpCodes.Callvirt, isMineGetter));
-                Debug.Log("[NoLag] Replaced 'SemiFunc.IsMasterClientOrSingleplayer' call with 'this.photonView.IsMine'");
+                codes.Insert(++i, new CodeInstruction(OpCodes.Call, getIsMineOrSingleplayer));
+                Debug.Log("[NetworkingReworked] Replaced 'SemiFunc.IsMasterClientOrSingleplayer' call with 'this.photonView.IsMine'");
             }
             else if (isMasterField != null && code.LoadsField(isMasterField))
             {
@@ -227,10 +236,17 @@ public static class PhysGrabObject_OverrideTimersTick_Transpiler
                 newInstr.labels.AddRange(labels);
                 codes[i] = newInstr;
                 codes.Insert(++i, new CodeInstruction(OpCodes.Callvirt, isMineGetter));
-                Debug.Log("[NoLag] Replaced 'isMaster' field read with 'this.photonView.IsMine'");
+                Debug.Log("[NetworkingReworked] Replaced 'isMaster' field read with 'this.photonView.IsMine'");
             }
         }
         return codes;
+    }
+
+    public static bool GetIsMineOrSingleplayer(PhysGrabObject grabObject)
+    {
+        var pv = grabObject.GetComponent<PhotonView>();
+        var isSinglePlayer = !SemiFunc.IsMultiplayer();
+        return (pv != null && pv.IsMine) || isSinglePlayer;
     }
 }
 
@@ -243,6 +259,7 @@ public static class PhysGrabObject_Update_Transpiler
     {
         List<CodeInstruction> codes = new List<CodeInstruction>(instructions);
 
+        MethodInfo getIsMineOrSingleplayer = AccessTools.Method(typeof(PhysGrabObject_Update_Transpiler), nameof(GetIsMineOrSingleplayer));
         MethodInfo semiFuncMethod = AccessTools.Method(typeof(SemiFunc), "IsMasterClientOrSingleplayer");
         // The public property getter for photonView (inherited from MonoBehaviourPun)
         MethodInfo photonViewGetter = AccessTools.PropertyGetter(typeof(MonoBehaviourPun), "photonView");
@@ -261,11 +278,18 @@ public static class PhysGrabObject_Update_Transpiler
                 codes[i] = newInstr;
                 // Insert: call this.photonView and then call the IsMine getter.
                 codes.Insert(++i, new CodeInstruction(OpCodes.Callvirt, photonViewGetter));
-                codes.Insert(++i, new CodeInstruction(OpCodes.Callvirt, isMineGetter));
-                Debug.Log("[NoLag] Replaced SemiFunc.IsMasterClientOrSingleplayer() with this.photonView.IsMine in Update");
+                codes.Insert(++i, new CodeInstruction(OpCodes.Call, getIsMineOrSingleplayer));
+                Debug.Log("[NetworkingReworked] Replaced SemiFunc.IsMasterClientOrSingleplayer() with this.photonView.IsMine in Update");
             }
         }
         return codes;
+    }
+
+    public static bool GetIsMineOrSingleplayer(PhysGrabObject grabObject)
+    {
+        var pv = grabObject.GetComponent<PhotonView>();
+        var isSinglePlayer = !SemiFunc.IsMultiplayer();
+        return (pv != null && pv.IsMine) || isSinglePlayer;
     }
 }
 

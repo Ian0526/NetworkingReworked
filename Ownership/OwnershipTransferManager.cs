@@ -25,7 +25,7 @@ public class OwnershipTransferManager : MonoBehaviourPunCallbacks
 
     private void Update()
     {
-        if (PhotonNetwork.IsMasterClient && Time.time >= nextPingUpdate)
+        if (Time.time >= nextPingUpdate)
         {
             UpdatePingProperty();
             nextPingUpdate = Time.time + pingUpdateInterval;

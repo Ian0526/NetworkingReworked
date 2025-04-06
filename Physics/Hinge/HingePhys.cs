@@ -1,5 +1,5 @@
 ﻿using HarmonyLib;
-using NoLag.Physics;
+using NetworkingReworked.Physics;
 using Photon.Pun;
 using UnityEngine;
 using static PhysGrabHinge;
@@ -11,6 +11,7 @@ public static class PhysGrabHinge_FixedUpdatePatch
     [HarmonyPrefix]
     public static bool Prefix(PhysGrabHinge __instance)
     {
+        if (!SemiFunc.IsMultiplayer()) return true;
         var physGrabObject = __instance.GetComponentInParent<PhysGrabObject>();
         var photon = __instance.GetComponent<PhotonView>();
         if (physGrabObject == null || photon == null) return false;
@@ -210,6 +211,7 @@ public static class PhysGrabHinge_OnJointBreakPatch
 {
     static bool Prefix(PhysGrabHinge __instance, float breakForce)
     {
+        if (!SemiFunc.IsMultiplayer()) return true;
         PhotonView pv = __instance.GetComponent<PhotonView>();
         var physGrabObject = __instance.GetComponent<PhysGrabObject>();
 

@@ -53,6 +53,7 @@ public class OwnershipTakeoverHelper : MonoBehaviourPun
 
     private void LateUpdate()
     {
+        if (!SemiFunc.IsMultiplayer()) return;
         if (rb == null || view == null) return;
         if (GetComponentInParent<PlayerTumble>() == null)
         {

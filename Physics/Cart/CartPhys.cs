@@ -20,7 +20,7 @@ public static class PhysGrabCart_FixedUpdate_Transpiler
             if (codes[i].Calls(targetCall))
             {
                 codes[i] = new CodeInstruction(OpCodes.Ldarg_0); // this
-                codes.Insert(i + 1, new CodeInstruction(OpCodes.Call, AccessTools.Method(typeof(PhysGrabCart_CommonHelpers), nameof(PhysGrabCart_CommonHelpers.GetIsMine))));
+                codes.Insert(i + 1, new CodeInstruction(OpCodes.Call, AccessTools.Method(typeof(PhysGrabCart_CommonHelpers), nameof(PhysGrabCart_CommonHelpers.GetIsMineOrSingleplayer))));
                 i++;
             }
         }
@@ -36,7 +36,7 @@ public static class PhysGrabCart_SmallCartLogic_Transpiler
     {
         var codes = new List<CodeInstruction>(instructions);
         var targetMethod = AccessTools.Method(typeof(SemiFunc), "IsMasterClientOrSingleplayer");
-        var isMineMethod = AccessTools.Method(typeof(PhysGrabCart_SmallCartLogic_Transpiler), nameof(GetIsMine));
+        var isMineMethod = AccessTools.Method(typeof(PhysGrabCart_SmallCartLogic_Transpiler), nameof(GetIsMineOrSingleplayer));
 
         if (targetMethod == null)
         {
@@ -63,10 +63,11 @@ public static class PhysGrabCart_SmallCartLogic_Transpiler
         return codes;
     }
 
-    public static bool GetIsMine(PhysGrabCart cart)
+    public static bool GetIsMineOrSingleplayer(PhysGrabCart cart)
     {
         var pv = cart.GetComponent<PhotonView>();
-        return pv != null && pv.IsMine;
+        var isSinglePlayer = !SemiFunc.IsMultiplayer();
+        return (pv != null && pv.IsMine) || isSinglePlayer;
     }
 }
 
@@ -83,7 +84,7 @@ public static class PhysGrabCart_Update_Transpiler
             if (codes[i].Calls(targetCall))
             {
                 codes[i] = new CodeInstruction(OpCodes.Ldarg_0); // this
-                codes.Insert(i + 1, new CodeInstruction(OpCodes.Call, AccessTools.Method(typeof(PhysGrabCart_CommonHelpers), nameof(PhysGrabCart_CommonHelpers.GetIsMine))));
+                codes.Insert(i + 1, new CodeInstruction(OpCodes.Call, AccessTools.Method(typeof(PhysGrabCart_CommonHelpers), nameof(PhysGrabCart_CommonHelpers.GetIsMineOrSingleplayer))));
                 i++;
             }
         }
@@ -94,25 +95,28 @@ public static class PhysGrabCart_Update_Transpiler
 
 public static class PhysGrabCart_CommonHelpers
 {
-    public static bool GetIsMine(PhysGrabCart cart)
+    public static bool GetIsMineOrSingleplayer(PhysGrabCart cart)
     {
-        return cart.TryGetComponent(out PhotonView pv) && pv.IsMine;
+        var pv = cart.GetComponent<PhotonView>();
+        var isSinglePlayer = !SemiFunc.IsMultiplayer();
+        return (pv != null && pv.IsMine) || isSinglePlayer;
     }
 }
 
 [HarmonyPatch(typeof(PhysGrabCart), "CartSteer")]
 public static class PhysGrabCart_CartSteer_OwnershipPrefix
 {
-    static void Prefix(PhysGrabCart __instance)
+    static bool Prefix(PhysGrabCart __instance)
     {
+        if (!SemiFunc.IsMultiplayer()) return true;
         if (!__instance.TryGetComponent(out PhotonView cartPv) || !cartPv.IsMine)
-            return;
+            return false;
 
         var itemsField = typeof(PhysGrabCart).GetField("itemsInCart", BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Public);
-        if (itemsField == null) return;
+        if (itemsField == null) return false;
 
         var items = itemsField.GetValue(__instance) as IEnumerable;
-        if (items == null) return;
+        if (items == null) return false;
 
         foreach (var item in items)
         {
@@ -135,6 +139,7 @@ public static class PhysGrabCart_CartSteer_OwnershipPrefix
                 itemPv.TransferOwnership(PhotonNetwork.LocalPlayer);
             }
         }
+        return true;
     }
 }
 
@@ -152,7 +157,7 @@ public static class PhysGrabCart_CartSteer_Transpiler
             {
                 // Replace the IsMasterClientOrSingleplayer call
                 codes[i] = new CodeInstruction(OpCodes.Ldarg_0); // load 'this'
-                codes.Insert(i + 1, new CodeInstruction(OpCodes.Call, AccessTools.Method(typeof(PhysGrabCart_CartSteer_Transpiler), nameof(GetIsMine))));
+                codes.Insert(i + 1, new CodeInstruction(OpCodes.Call, AccessTools.Method(typeof(PhysGrabCart_CartSteer_Transpiler), nameof(GetIsMineOrSingleplayer))));
                 i++;
             }
         }
@@ -160,8 +165,10 @@ public static class PhysGrabCart_CartSteer_Transpiler
         return codes;
     }
 
-    public static bool GetIsMine(PhysGrabCart cart)
+    public static bool GetIsMineOrSingleplayer(PhysGrabCart cart)
     {
-        return cart.TryGetComponent(out PhotonView pv) && pv.IsMine;
+        var pv = cart.GetComponent<PhotonView>();
+        var isSinglePlayer = !SemiFunc.IsMultiplayer();
+        return (pv != null && pv.IsMine) || isSinglePlayer;
     }
 }

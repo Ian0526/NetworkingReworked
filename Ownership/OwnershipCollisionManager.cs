@@ -28,13 +28,13 @@ public class OwnershipCollisionMonitor : MonoBehaviour
 
     private void OnCollisionEnter(Collision collision)
     {
-        if (!initialized || view == null || grabObject == null) return;
+        if (SemiFunc.IsMultiplayer() || !initialized || view == null || grabObject == null) return;
         TryTakeOwnership(collision.collider);
     }
 
     private void OnCollisionStay(Collision collision)
     {
-        if (!initialized || view == null || grabObject == null) return;
+        if (SemiFunc.IsMultiplayer() || !initialized || view == null || grabObject == null) return;
         TryTakeOwnership(collision.collider);
     }
 

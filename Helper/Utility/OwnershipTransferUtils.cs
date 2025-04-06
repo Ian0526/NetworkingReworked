@@ -1,7 +1,7 @@
 ﻿using Photon.Pun;
 using Photon.Realtime;
 
-namespace NoLag.Helper.Utility
+namespace NetworkingReworked.Helper.Utility
 {
     public class OwnershipTransferUtils
     {

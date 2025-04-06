@@ -1,5 +1,5 @@
 ﻿using HarmonyLib;
-using NoLag.Physics;
+using NetworkingReworked.Physics;
 using Photon.Pun;
 using UnityEngine;
 
@@ -9,7 +9,6 @@ public static class OwnershipInitializer
     [HarmonyPostfix]
     public static void Postfix(PhysGrabObject __instance)
     {
-        PhotonNetwork.LogLevel = PunLogLevel.Full;
         if (__instance.GetComponent<OwnershipTakeoverHelper>() == null)
         {
             __instance.gameObject.AddComponent<OwnershipCollisionMonitor>();

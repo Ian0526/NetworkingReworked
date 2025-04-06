@@ -7,6 +7,7 @@ public static class CustomPhysGrabObjectSerializationPatch
 {
     static bool Prefix(PhysGrabObject __instance, PhotonStream stream, PhotonMessageInfo info)
     {
+        if (!SemiFunc.IsMultiplayer()) return true;
         var view = __instance.GetComponent<PhotonView>();
 
         var t = Traverse.Create(__instance);
@@ -50,7 +51,7 @@ public static class CustomPhysGrabObjectSerializationPatch
         }
         catch (System.Exception ex)
         {
-            Debug.LogError("[NoLag] SerializationPatch error: " + ex);
+            Debug.LogError("[NetworkingReworked] SerializationPatch error: " + ex);
             return true;
         }
 

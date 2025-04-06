@@ -1,7 +1,7 @@
 ﻿using HarmonyLib;
 using Photon.Pun;
 
-namespace NoLag.Physics
+namespace NetworkingReworked.Physics
 {
     public class HingeRPCs : MonoBehaviourPun
     {

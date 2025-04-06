@@ -49,7 +49,7 @@ public static class PhysGrabObjectSerializationPatch
         }
         catch (System.Exception ex)
         {
-            Debug.LogError("[NoLag] SerializeView exception: " + ex);
+            Debug.LogError("[NetworkingReworked] SerializeView exception: " + ex);
             return true;
         }
 

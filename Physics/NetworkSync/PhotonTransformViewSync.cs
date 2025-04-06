@@ -1,7 +1,7 @@
 ﻿using UnityEngine;
 using Photon.Pun;
 using System.Reflection;
-using NoLag.Helper.Utility;
+using NetworkingReworked.Helper.Utility;
 
 [RequireComponent(typeof(PhotonView))]
 public class PhotonViewTransformSync : MonoBehaviourPun
@@ -43,7 +43,6 @@ public class PhotonViewTransformSync : MonoBehaviourPun
 
         Vector3 direction = rb.velocity * Time.fixedDeltaTime;
         SyncSnapshotToPhotonTransformView(direction);
-        Debug.Log("[PhotonViewTransformSync] Initial transform snapshot applied.");
     }
 
     public void SyncToOthers()

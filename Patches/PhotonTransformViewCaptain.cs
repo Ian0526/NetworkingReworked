@@ -6,7 +6,7 @@ using UnityEngine;
 // this entire class is disgusting
 // after my refactor, i'm not sure if this is needed anymore, but it works and i don't want to remove
 // to see if it doesn't
-namespace NoLag
+namespace NetworkingReworked
 {
     [HarmonyPatch(typeof(PhotonTransformView))]
     public static class PhotonTransformViewPatch
@@ -29,6 +29,8 @@ namespace NoLag
         [HarmonyPatch("Update")]
         public static bool Prefix_Update(PhotonTransformView __instance)
         {
+            if (!SemiFunc.IsMultiplayer()) return true;
+
             var view = __instance.GetComponent<PhotonView>();
             var rb = (Rigidbody)rbField.GetValue(__instance);
             if (rb == null || view == null) return false;
@@ -147,6 +149,7 @@ namespace NoLag
         [HarmonyPatch("OnPhotonSerializeView")]
         public static bool Prefix_OnPhotonSerializeView(PhotonTransformView __instance, PhotonStream stream, PhotonMessageInfo info)
         {
+            if (!SemiFunc.IsMultiplayer()) return true;
             Rigidbody rb = (Rigidbody)rbField.GetValue(__instance);
             Transform transform = __instance.transform;
 

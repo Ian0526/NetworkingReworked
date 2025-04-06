@@ -8,7 +8,7 @@ public static class RunManagerPatch
     [HarmonyPostfix]
     public static void Postfix(RunManager __instance)
     {
-        Debug.Log("[NoLag] RunManager.Awake() has finished. Doing custom logic...");
+        Debug.Log("[NetworkingReworked] RunManager.Awake() has finished. Doing custom logic...");
 
         if (!__instance.gameObject.GetComponent<OwnershipTransferManager>())
         {

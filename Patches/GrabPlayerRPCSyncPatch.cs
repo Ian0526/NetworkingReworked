@@ -8,6 +8,7 @@ public static class GrabPlayerAddRPC_Patch
     [HarmonyPostfix]
     public static void Postfix(PhysGrabObject __instance, int photonViewID)
     {
+        if (!SemiFunc.IsMultiplayer()) return;
 
         if (__instance.GetComponentInParent<Enemy>() != null ||
             __instance.GetComponentInParent<EnemyRigidbody>() != null ||
@@ -48,6 +49,7 @@ public static class GrabPlayerRemoveRPC_Patch
     [HarmonyPostfix]
     public static void Postfix(PhysGrabObject __instance, int photonViewID)
     {
+        if (!SemiFunc.IsMultiplayer()) return;
         var helper = __instance.GetComponent<OwnershipTakeoverHelper>();
         if (helper != null)
         {
