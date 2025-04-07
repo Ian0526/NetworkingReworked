@@ -55,6 +55,3 @@ Only **you** need the mod. It works even if the host is completely unmodded.
 
 If anything feels off or you'd like to suggest improvements, feel free to reach out on Discord: `@readthisifbad`
 
----
-
-No more jank. No more lag. Just REPO, the way it should've felt all along.
