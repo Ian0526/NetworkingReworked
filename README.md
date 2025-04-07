@@ -32,6 +32,25 @@ The result? Everything just feels responsive. Picking up and throwing items, dra
 
 ---
 
+## Installation
+
+1. Install [BepInEx](https://github.com/BepInEx/BepInEx/releases) into your REPO folder.
+2. Drop this mod’s `.dll` into `BepInEx/plugins`.
+3. Launch REPO and join any multiplayer game.
+
+Only **you** need the mod. It works even if the host is completely unmodded.
+
+---
+
+## Known Quirks
+
+- Grabbing the same object at the same time as another player might cause ownership to bounce briefly
+- Some rare scripted objects (like quest items or special valuables) might behave oddly. Let me know if you find any
+- Doors still rely on host assumptions, had issues with desync but I'll post an update when I have time
+- The system uses a passive resync, dropping objects/throwing objects might show a brief jitter to re-align with the host's expectations
+
+---
+
 ## For The Devs
 
 Every single interactable object in REPO is a `PhysGrabObject`, which implements `IPunObservable`. These objects include a `PhotonTransformView`, which is responsible for syncing their position, rotation, and movement across the network.
@@ -49,33 +68,6 @@ It turns out Photon doesn't like you manipulating fields via Reflection as a mos
 - I implemented a **soft sync** system that gradually reconciles the object's state back to the host after a throw or release, preventing sudden snapping or janky corrections.
 - A **passive sync system** checks cached network data (`PhotonStreamCache`) and interpolates remote object states only when the item is unheld and not being interacted with.
 - For edge cases like **carts** and **doors**, I detect object containment and override physics behavior manually to ensure smooth, glitch-free motion on both the client and the host.
-
----
-
-### 🚀 The Result
-
-- **Zero-lag local interactions**
-- **Fluid object control**
-- **No more physics stutter or ownership delays**
-
-Multiplayer now *feels* like singleplayer—with full prediction, correction, and syncing systems that make REPO actually playable with friends.
-
-## Installation
-
-1. Install [BepInEx](https://github.com/BepInEx/BepInEx/releases) into your REPO folder.
-2. Drop this mod’s `.dll` into `BepInEx/plugins`.
-3. Launch REPO and join any multiplayer game.
-
-Only **you** need the mod. It works even if the host is completely unmodded.
-
----
-
-## Known Quirks
-
-- Grabbing the same object at the same time as another player might cause ownership to bounce briefly
-- Some rare scripted objects (like quest items or special valuables) might behave oddly. Let me know if you find any
-- Doors still rely on host assumptions, had issues with desync but I'll post an update when I have time
-- The system uses a passive resync, dropping objects/throwing objects might show a brief jitter to re-align with the host's expectations
 
 ---
 
