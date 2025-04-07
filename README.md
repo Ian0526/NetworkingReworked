@@ -1,92 +1,60 @@
-# NetworkingRework
+# NetworkingReworked
+**(Now redone from previous version this week, solo-client supported)**
 
-This project is a **BepInEx Harmony patch** for the Unity-based multiplayer game **REPO**, focusing on fixing network latency related delay with physics. If you've played any multiplayer instance of REPO, you've probably noticed a significant difference in fluidity between singleplayer/hosting & being a client.
+**NetworkingReworked** is a client-side mod for REPO that makes multiplayer feel like singleplayer. No more input lag, rubberbanding, or weird delay when picking up or throwing objects.
 
----
-
-## What This Mod Does
-
-REPO has a number of systems designed around single-player or host-authoritative assumptions. By default, physics calculations are performed through on the host and propagated through Photon. This mod:
-
-- Replaces host-only logic (`PhotonNetwork.IsMasterClient` and `SemiFunc.IsMasterClientOrSingleplayer`) with ownership checks (`PhotonView.IsMine`)
-- Enables **client-side simulation and control** of physics objects they own
-- Adds **ownership transfer logic** for grabbed and colliding objects
-- Adds **state syncing and physics prediction** to minimize jitter and misbehavior when objects are handed off
-- Fixes **cart-related ownership and behavior** so they behave consistently when pulled by clients
-
-**In simpler terms, this makes clients feel like they're playing on a single player instance (or hosting).**
+This mod doesn't change the host or the server. It just makes your game respond the way it *should*.
 
 ---
 
-## What is Photon?
+## What It Actually Does
 
-[Photon Unity Networking (PUN)](https://www.photonengine.com/pun) is a real-time networking framework for Unity, allowing players to interact with shared game objects. It uses the concept of `PhotonView` components, where each object has an "owner" (one player who can write to the object's state).
+REPO was designed so the host controls nearly everything. That means when you try to grab, move, or throw an object as a client, there's a full round-trip delay while the host approves it. That delay is why everything feels unresponsive.
 
-The original REPO code assumes the host is the only source of truth. This mod breaks that assumption and gives clients more authority where appropriate, essentially allowing the client to take more control.
+**NetworkingReworked changes that:**
 
----
+- **You act like the owner of every object** — unless something else (like an enemy or another player) touches it.
+- When you grab or throw something, it's fully simulated on your side immediately.
+- If you stop interacting, the object gradually re-syncs with the host to avoid glitches.
+- If someone else grabs it, or it behaves unexpectedly (like from a collision), your control is gracefully handed back.
 
-## How does REPO Networking work?
-![Normal Photon Networking Sequence](https://i.gyazo.com/871706b74ad2a346a64d8e35480630a0.png)
-
-In REPO, all multiplayer traffic is routed through Photon, with the MasterClient (typically the host) acting as the authoritative source of truth. When a client attempts to move or interact with an object, the update is first sent to Photon, which then forwards it to the host. The host processes the update, then sends the new state back through Photon, which replicates it to all other clients, including the original sender.
-
-This results in a round-trip delay for every interaction, effectively doubling the input latency. While this model ensures server side authority and cheat prevention, it also introduces significant responsiveness issues, especially in physics-heavy games like REPO. For physics synchronization, this delay can cause jitter, delayed object reactions, or even desync between players.
-
-The goal of this mod is to offload some of that authority to clients in a controlled and safe manner — reducing latency and improving responsiveness without breaking multiplayer consistency.
-
-![NetworkingRework](https://i.gyazo.com/19baac017b202ed181e24b439e7912f6.png)
-
-### Patched Behaviors
-
-| System | Behavior | Fix |
-|--------|----------|-----|
-| `PhysGrabObject` | Grab/release logic | Ownership, syncing, ping compensation |
-| `PhysGrabHinge` | Hinged object physics | Prevents joint destruction on non-hosts |
-| `PhotonTransformView` | Transform syncing | Avoids override flicker during ownership transfer |
-| `PhysGrabCart` | Pulling and state transitions | Replaces host-only logic, adds ping-buffered grabbing |
-| `PhysGrabObjectGrabArea` | Grab region logic | Ensures grab detection works client-side |
-| `OwnershipTakeoverHelper` | Client-side authority monitor | Ownership stabilization based on pings and state |
-| `ImpactSyncHandler` | Velocity and transform sync | Manual sync of physics after collisions |
-| `PhotonView.TransferOwnership` | Ownership transfer | Ensures physics state and grab timers are patched |
+The result? Everything just feels responsive. Picking up and throwing items, dragging carts, and interacting with the world feels like it does in singleplayer.
 
 ---
 
-## Current Known Issues
+## Key Features
 
-### Enemies
-- Most AI behaviors are still host-authoritative
-- Clients may not properly own or simulate enemy interactions
-- Enemies fall over non-reactive to item impacts
-
-### Scripted Valuables
-- Some valuable objects (e.g. scripted mission-critical ones) may not transfer ownership properly
-- State and physics updates may be lost or ignored by clients
-
-### Carts
-- Initial state glitches during transfer (e.g. wrong `Dragged` state)
-- Ownership handoff mid-frame may cause physics pop
-- Cart pulling is inconsistent when grabbed from certain angles
+- **Now no longer requires host installation**
+- Zero-grab-delay and smooth object control
+- Soft sync after release to avoid sudden snapping
+- Graceful handoff if another player or enemy touches the object
+- Hinge doors, carts, and other complex physics behave naturally
 
 ---
 
-## Goals & Future Work
+## Installation
 
-- Finish cart logic, clients cannot maintain an active state with carts and they are continuously in a dragged state.
-- Edgecase every enemy to see how the mechanics behave.
-- Edgecase every valuable item with a scriptable behavior that interact with players. Most are client related, so they don't need interference, but some do.
-- Thorougly test in both a normal/deliberately intensive game environment.
+1. Install [BepInEx](https://github.com/BepInEx/BepInEx/releases) into your REPO folder.
+2. Drop this mod’s `.dll` into `BepInEx/plugins`.
+3. Launch REPO and join any multiplayer game.
 
----
-
-## 🔧 Setup
-
-1. Install [BepInEx 5.x](https://github.com/BepInEx/BepInEx/releases) into your REPO installation folder
-2. Place this mod's `.dll` into `BepInEx/plugins`
-3. Launch the game and join a multiplayer session to see the improvements
+Only **you** need the mod. It works even if the host is completely unmodded.
 
 ---
 
-## Final Notes
+## Known Quirks
 
-This won't be going on Thunderstore until I believe it's in a suitable condition.
+- Grabbing the same object at the same time as another player might cause ownership to bounce briefly
+- Some rare scripted objects (like quest items or special valuables) might behave oddly. Let me know if you find any
+- Doors still rely on host assumptions, had issues with desync but I'll post an update when I have time
+- The system uses a passive resync, dropping objects/throwing objects might show a brief jitter to re-align with the host's expectations
+
+---
+
+## Feedback
+
+If anything feels off or you'd like to suggest improvements, feel free to reach out on Discord: `@readthisifbad`
+
+---
+
+No more jank. No more lag. Just REPO, the way it should've felt all along.
