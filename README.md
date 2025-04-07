@@ -1,7 +1,7 @@
 # NetworkingReworked
 **(Now redone from previous version this week, solo-client supported)**
 
-**NetworkingReworked** is a client-side mod for REPO that makes multiplayer feel like singleplayer. No more input lag, rubberbanding, or weird delay when picking up or throwing objects.
+**NetworkingReworked** is a client-side mod for REPO that makes multiplayer feel like singleplayer. No more input lag, rubberbanding, or weird delay when picking up objects.
 
 This mod doesn't change the host or the server. It just makes your game respond the way it *should*.
 
@@ -26,11 +26,39 @@ The result? Everything just feels responsive. Picking up and throwing items, dra
 
 - **Now no longer requires host installation**
 - Zero-grab-delay and smooth object control
-- Soft sync after release to avoid sudden snapping
+- Soft sync after release to avoid sudden snapping (although, fast objects may jitter for a moment to resync with the host)
 - Graceful handoff if another player or enemy touches the object
 - Hinge doors, carts, and other complex physics behave naturally
 
 ---
+
+## For The Devs
+
+Every single interactable object in REPO is a `PhysGrabObject`, which implements `IPunObservable`. These objects include a `PhotonTransformView`, which is responsible for syncing their position, rotation, and movement across the network.
+
+However, in vanilla REPO multiplayer, only the **MasterClient** has full authority over physics objects. Clients must wait for updates from the host, resulting in **laggy**, **stuttery**, or even **desynced** physics—especially for fast-moving or frequently manipulated items like carts, doors, and throwable objects.
+
+I rewrote the networking logic to give each client **predictive authority** over physics objects *as if they were in singleplayer*. 
+
+It turns out Photon doesn't like you manipulating fields via Reflection as a most of their exposed methods reference the same fields, for example I rewrote the getter for `PhotonView.IsMine` which resulted in `OnPhotonSerializeView` calls disallowing client fake owning clients from calling `stream.ReceiveNext()`. I needed to stream the true host location of the object to facilitate the sync behavior, so to get around this, I wrote a patch that allowed the client to access the buffer via `OnSerializeRead`. Surprisingly, this method still intakes data regardless of `PhotonView.IsMine` status. The prefix parses this data into a caching system which is used to apply extrapolation through velocity, position, and rotation adjustments. Additionally, when objects become still, the setup forcefully sets them to the true location (as long as another player isn't holding the object, the object will resync itself in that case).
+
+### Key Changes:
+
+- `FakeOwnershipController` was added to every `PhysGrabObject`, allowing the local client to *simulate* ownership and physics authority.
+- Instead of calling `PhotonView.TransferOwnership()`, we intercept transform sync data and **smoothly override local physics** using extrapolated host states or locally simulated data.
+- I implemented a **soft sync** system that gradually reconciles the object's state back to the host after a throw or release, preventing sudden snapping or janky corrections.
+- A **passive sync system** checks cached network data (`PhotonStreamCache`) and interpolates remote object states only when the item is unheld and not being interacted with.
+- For edge cases like **carts** and **doors**, I detect object containment and override physics behavior manually to ensure smooth, glitch-free motion on both the client and the host.
+
+---
+
+### 🚀 The Result
+
+- **Zero-lag local interactions**
+- **Fluid object control**
+- **No more physics stutter or ownership delays**
+
+Multiplayer now *feels* like singleplayer—with full prediction, correction, and syncing systems that make REPO actually playable with friends.
 
 ## Installation
 
