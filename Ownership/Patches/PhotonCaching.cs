@@ -15,6 +15,7 @@ public static class SerializeReading
     {
         static void Prefix()
         {
+            FakeOwnershipData.ClearAll();
             if (PhotonNetwork.IsMasterClient || !SemiFunc.IsMultiplayer() || loadedOnce) return;
             ApplyPatch();
             loadedOnce = true;

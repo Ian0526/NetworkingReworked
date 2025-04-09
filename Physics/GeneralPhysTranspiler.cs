@@ -67,7 +67,8 @@ public static class PhysGrabObject_FixedUpdate_Transpiler
     }
 }
 
-[HarmonyPatch(typeof(HurtCollider), "ColliderCheck")]
+// Causing more issues than helping, let MC facilitate
+//[HarmonyPatch(typeof(HurtCollider), "ColliderCheck")]
 public static class HurtColliderPatch
 {
     public static bool IsOwnerOrSingleplayer(GameObject obj)

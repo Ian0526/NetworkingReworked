@@ -4,6 +4,8 @@ using System.Reflection;
 using static PhysGrabInCart;
 using System.Collections.Generic;
 using HarmonyLib;
+using System;
+using System.Collections;
 
 [RequireComponent(typeof(PhotonView), typeof(Rigidbody), typeof(PhysGrabObject))]
 public class FakeOwnershipController : MonoBehaviourPun
@@ -13,12 +15,6 @@ public class FakeOwnershipController : MonoBehaviourPun
     private PhysGrabObject physGrabObject;
     private PhysGrabCart cart;
 
-    private Vector3 velocityBeforeRelease;
-    private Quaternion rotationBeforeRelease;
-    private Vector3 positionBeforeRelease;
-
-    private float correctionTimer = 0f;
-    private float correctionDuration = 0.5f;
     private bool isSoftSyncing = false;
 
     private void Awake()
@@ -43,6 +39,9 @@ public class FakeOwnershipController : MonoBehaviourPun
     {
         if (PhotonNetwork.IsMasterClient || !SemiFunc.IsMultiplayer()) return;
 
+        // check if item somehow is gone for no reason
+        CheckSteadyState();
+
         if (FakeOwnershipData.IsLocallyGrabbed(view) && cart)
         {
             UpdateItemsInCart();
@@ -53,12 +52,33 @@ public class FakeOwnershipController : MonoBehaviourPun
         {
             ApplyPassiveSync();
         }
+    }
 
-        // Soft sync only when in post-throw smoothing phase
-        if (isSoftSyncing)
+    public void CheckSteadyState()
+    {
+        if (view == null || physGrabObject == null || !physGrabObject.isActiveAndEnabled)
         {
-            ApplySoftSyncing();
+            FakeOwnershipData.ClearItem(view);
         }
+    }
+
+    public void HardSync()
+    {
+        if (!PhotonStreamCache.TryGet(view.ViewID, out var hostState))
+        {
+            //Debug.Log($"[PassiveSync] ViewID {view.ViewID} | No cached data found in PhotonStreamCache");
+            return;
+        }
+
+        if (FakeOwnershipData.IsLocallyGrabbed(view))
+        {
+            return;
+        }
+
+        rb.position = hostState.position;
+        rb.rotation = hostState.rotation;
+        rb.velocity = hostState.velocity;
+        rb.angularVelocity = hostState.angularVelocity;
     }
 
     private void UpdateItemsInCart()
@@ -70,66 +90,51 @@ public class FakeOwnershipController : MonoBehaviourPun
 
         if (itemsInCart == null) return;
 
-        // lazy ik
         foreach (var item in itemsInCart)
         {
             PhotonView view = item.GetComponent<PhotonView>();
             if (view == null) continue;
-            FakeOwnershipData.AddItemToCart(item.GetComponent<PhotonView>());
+            FakeOwnershipData.AddItemToCart(view, photonView);
         }
     }
+    // we need to slow sync cart
 
     private void ApplyPassiveSync()
     {
         if (isSoftSyncing)
         {
-            //Debug.Log($"[PassiveSync] ViewID {view.ViewID} | Skipped due to isSoftSyncing = true");
             return;
         }
 
         if (!PhotonStreamCache.TryGet(view.ViewID, out var hostState))
         {
-            //Debug.Log($"[PassiveSync] ViewID {view.ViewID} | No cached data found in PhotonStreamCache");
             return;
         }
 
-        if (FakeOwnershipData.IsLocallyGrabbed(view) || IsItemInCart())
+        if (FakeOwnershipData.IsLocallyGrabbed(view) || (IsItemInCart() && CartIsBeingHeld()))
         {
             return;
         }
 
-        float distance = Vector3.Distance(rb.position, hostState.position);
+        rb.position = Vector3.Lerp(rb.position, hostState.position, 0.075f);
+        rb.rotation = Quaternion.Slerp(rb.rotation, hostState.rotation, 0.075f);
+        rb.velocity = Vector3.Lerp(rb.velocity, hostState.velocity, 0.075f);
+        rb.angularVelocity = Vector3.Lerp(rb.angularVelocity, hostState.angularVelocity, 0.075f);
+    }
 
-        //Debug.Log($"[PassiveSync] ViewID {view.ViewID} | Distance: {distance:F3} | LocalPos: {rb.position} | HostPos: {hostState.position}");
-
-        rb.position = Vector3.Lerp(rb.position, hostState.position, 0.25f);
-        rb.rotation = Quaternion.Slerp(rb.rotation, hostState.rotation, 0.25f);
-        rb.velocity = Vector3.Lerp(rb.velocity, hostState.velocity, 0.25f);
-        rb.angularVelocity = Vector3.Lerp(rb.angularVelocity, hostState.angularVelocity, 0.25f);
+    private bool CartIsBeingHeld()
+    {
+        int cartViewID = FakeOwnershipData.GetCartHoldingItem(photonView);
+        if (cartViewID <= 0)
+        {
+            return false;
+        }
+        return FakeOwnershipData.IsNetworkGrabbed(cartViewID);
     }
 
     private bool IsItemInCart()
     {
         return FakeOwnershipData.IsItemInCart(view);
-    }
-
-    private void ApplySoftSyncing()
-    {
-        if (!PhotonStreamCache.TryGet(view.ViewID, out var hostState))
-            return;
-
-        correctionTimer += Time.fixedDeltaTime;
-        float t = Mathf.Clamp01(correctionTimer / correctionDuration);
-
-        rb.position = Vector3.Lerp(positionBeforeRelease, hostState.position, t);
-        rb.rotation = Quaternion.Slerp(rotationBeforeRelease, hostState.rotation, t);
-        rb.velocity = Vector3.Lerp(velocityBeforeRelease, hostState.velocity, t);
-        rb.angularVelocity = Vector3.Lerp(rb.angularVelocity, hostState.angularVelocity, t);
-
-        if (t >= 1f)
-        {
-            isSoftSyncing = false;
-        }
     }
 
     public void SimulateOwnership()
@@ -145,30 +150,133 @@ public class FakeOwnershipController : MonoBehaviourPun
             // disabled for now because the networking for doors suck
             //hinge.GetComponent<Rigidbody>().isKinematic = false;
         }
-
-        //Debug.Log($"[FakeOwnershipController] Fake ownership of ViewID {view.ViewID} started.");
     }
 
-    public void BeginSoftSyncFromThrow()
+    public void SyncAfterRelease()
     {
         if (view == null) return;
 
-        velocityBeforeRelease = rb.velocity;
-        positionBeforeRelease = rb.position;
-        rotationBeforeRelease = rb.rotation;
-
         OverwriteStoredNetworkData();
 
-        correctionTimer = 0f;
-        isSoftSyncing = true;
-
-        //Debug.Log($"[FakeOwnershipController] Initiated soft sync after throw.");
+        if (cart)
+        {
+            // let passive sync do it
+            //SlowSyncCartWithItems(0.70f);
+        }
+        else
+        {
+            HardSync();
+        }
     }
 
-    private void IfItemInCartSync()
+    public void SlowSyncCartWithItems(float duration = 0.2f, float stagger = 0.02f)
     {
-        if (cart == null) return;
-        var listOfItems = cart.GetComponent<PhysGrabInCart>();
+        if (isSoftSyncing) return;
+        StartCoroutine(SlowSyncCartRoutine(duration, stagger));
+    }
+
+    private IEnumerator SlowSyncCartRoutine(float duration, float stagger)
+    {
+        isSoftSyncing = true;
+
+        if (!PhotonStreamCache.TryGet(view.ViewID, out var hostState))
+        {
+            isSoftSyncing = false;
+            yield break;
+        }
+
+        Vector3 startPos = rb.position;
+        Quaternion startRot = rb.rotation;
+        Vector3 startVel = rb.velocity;
+        Vector3 startAngVel = rb.angularVelocity;
+
+        float t = 0f;
+
+        // Soft sync the cart itself
+        while (t < duration)
+        {
+            float progress = t / duration;
+
+            rb.position = Vector3.Lerp(startPos, hostState.position, progress);
+            rb.rotation = Quaternion.Slerp(startRot, hostState.rotation, progress);
+            rb.velocity = Vector3.Lerp(startVel, hostState.velocity, progress);
+            rb.angularVelocity = Vector3.Lerp(startAngVel, hostState.angularVelocity, progress);
+
+            yield return new WaitForFixedUpdate();
+            t += Time.fixedDeltaTime;
+        }
+
+        // Finalize the cart
+        rb.position = hostState.position;
+        rb.rotation = hostState.rotation;
+        rb.velocity = hostState.velocity;
+        rb.angularVelocity = hostState.angularVelocity;
+
+        isSoftSyncing = false;
+
+        // Delay before syncing items slightly
+        if (cart != null)
+        {
+            var itemsInCartField = Traverse.Create(cart).Field("itemsInCart");
+            List<PhysGrabObject> itemsInCart = itemsInCartField.GetValue() as List<PhysGrabObject>;
+
+            if (itemsInCart != null)
+            {
+                foreach (var item in itemsInCart)
+                {
+                    var controller = item.GetComponent<FakeOwnershipController>();
+                    if (controller != null)
+                    {
+                        yield return new WaitForSeconds(stagger); // staggered delay
+                        controller.SoftSyncOnly(duration * 0.8f); // slightly faster
+                    }
+                }
+            }
+        }
+    }
+
+    public void SoftSyncOnly(float duration)
+    {
+        if (isSoftSyncing) return;
+        StartCoroutine(SoftSyncRoutine(duration));
+    }
+
+    private IEnumerator SoftSyncRoutine(float duration)
+    {
+        isSoftSyncing = true;
+
+        if (!PhotonStreamCache.TryGet(view.ViewID, out var hostState))
+        {
+            isSoftSyncing = false;
+            yield break;
+        }
+
+        Vector3 startPos = rb.position;
+        Quaternion startRot = rb.rotation;
+        Vector3 startVel = rb.velocity;
+        Vector3 startAngVel = rb.angularVelocity;
+
+        float t = 0f;
+
+        while (t < duration)
+        {
+            float progress = t / duration;
+
+            rb.position = Vector3.Lerp(startPos, hostState.position, progress);
+            rb.rotation = Quaternion.Slerp(startRot, hostState.rotation, progress);
+            rb.velocity = Vector3.Lerp(startVel, hostState.velocity, progress);
+            rb.angularVelocity = Vector3.Lerp(startAngVel, hostState.angularVelocity, progress);
+
+            yield return new WaitForFixedUpdate();
+            t += Time.fixedDeltaTime;
+        }
+
+        rb.position = hostState.position;
+        rb.rotation = hostState.rotation;
+        rb.velocity = hostState.velocity;
+        rb.angularVelocity = hostState.angularVelocity;
+
+        isSoftSyncing = false;
     }
 
     private void OverwriteStoredNetworkData()
@@ -204,6 +312,5 @@ public class FakeOwnershipController : MonoBehaviourPun
         SetField("m_firstTake", false);
         SetField("teleport", false);
 
-        Debug.Log($"[FakeOwnershipController] Overwrote PhotonTransformView data for ViewID {view.ViewID}");
     }
 }

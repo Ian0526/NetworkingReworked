@@ -6,25 +6,41 @@ internal static class FakeOwnershipData
 {
     private static readonly HashSet<int> simulatedViewIDs = new HashSet<int>();
     private static readonly Dictionary<int, bool> locallyGrabbedViews = new Dictionary<int, bool>();
+    private static readonly Dictionary<int, bool> networkGrabbedViews = new Dictionary<int, bool>();
     private static readonly Dictionary<int, int> grabCounts = new Dictionary<int, int>();
     private static readonly Dictionary<int, float> recentlyThrown = new Dictionary<int, float>();
     private static readonly HashSet<int> itemsInCart = new HashSet<int>();
+    private static readonly Dictionary<int, int> itemToCartMap = new Dictionary<int, int>();
+    // cart id, not item id vvvv
 
     private static Dictionary<int, object[]> cachedStreamData = new Dictionary<int, object[]>();
 
-    public static void AddItemToCart(PhotonView photonView)
+    public static void AddItemToCart(PhotonView itemView, PhotonView cartView)
     {
-        itemsInCart.Add(photonView.ViewID);
+        if (itemToCartMap.ContainsKey(itemView.ViewID)) return;
+        itemToCartMap.Add(itemView.ViewID, cartView.ViewID);
+        itemsInCart.Add(itemView.ViewID);
     }
 
     public static void RemoveItemFromCart(PhotonView photonView)
     {
+        itemToCartMap.Remove(photonView.ViewID);
         itemsInCart.Remove(photonView.ViewID);
     }
 
     public static bool IsItemInCart(PhotonView photonView)
     {
         return itemsInCart.Contains(photonView.ViewID);
+    }
+
+    public static int GetCartHoldingItem(PhotonView photonView)
+    {
+        int id = photonView.ViewID;
+        if (itemsInCart.Contains(id))
+        {
+            return itemToCartMap[id];
+        }
+        return -1;
     }
 
     public static void ClearItemsInCart()
@@ -44,12 +60,6 @@ internal static class FakeOwnershipData
         simulatedViewIDs.Remove(view.ViewID);
     }
 
-    public static bool HasAnyGrabbers(PhotonView view)
-    {
-        if (view == null) return false;
-        return grabCounts.TryGetValue(view.ViewID, out int count) && count > 0;
-    }
-
     public static bool IsSimulated(PhotonView view) =>
         view != null && simulatedViewIDs.Contains(view.ViewID);
 
@@ -57,6 +67,24 @@ internal static class FakeOwnershipData
     {
         if (view == null) return;
         locallyGrabbedViews[view.ViewID] = isGrabbed;
+    }
+
+    public static void SetNetworkGrabbed(PhotonView view)
+    {
+        if (view == null) return;
+        int id = view.ViewID;
+        networkGrabbedViews[id] = true;
+    }
+
+    public static void ReleaseNetworkGrab(int id)
+    {
+        networkGrabbedViews[id] = false;
+    }
+
+    public static bool IsNetworkGrabbed(int photonViewID)
+    {
+        return networkGrabbedViews.TryGetValue(photonViewID, out bool grabbed) &&
+               grabbed;
     }
 
     public static bool IsLocallyGrabbed(PhotonView view)
@@ -114,12 +142,24 @@ internal static class FakeOwnershipData
                count > 0;
     }
 
+    public static void ClearItem(PhotonView view)
+    {
+        simulatedViewIDs.Remove(view.ViewID);
+        grabCounts.Remove(view.ViewID);
+        locallyGrabbedViews.Remove(view.ViewID);
+        recentlyThrown.Remove(view.ViewID);
+        itemsInCart.Remove(view.ViewID);
+        itemToCartMap.Remove(view.ViewID);
+    }
+
     public static void ClearAll()
     {
         simulatedViewIDs.Clear();
         grabCounts.Clear();
         locallyGrabbedViews.Clear();
-    }
+        recentlyThrown.Clear();
+        itemsInCart.Clear();
+}
 
     public static void ClearGrabStates()
     {

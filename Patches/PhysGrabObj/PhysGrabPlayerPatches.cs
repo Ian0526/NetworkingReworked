@@ -1,4 +1,5 @@
 ﻿using HarmonyLib;
+using NetworkingRework.Utils;
 using Photon.Pun;
 using UnityEngine;
 
@@ -10,11 +11,7 @@ public static class GrabPlayerAddRPC_Patch
     {
         if (!SemiFunc.IsMultiplayer() || PhotonNetwork.IsMasterClient) return;
 
-        if (__instance.GetComponentInParent<Enemy>() != null ||
-            __instance.GetComponentInParent<EnemyRigidbody>() != null ||
-            __instance.GetComponent<Enemy>() != null ||
-            __instance.GetComponent<EnemyRigidbody>() != null ||
-            __instance.GetComponent<PhysGrabHinge>() != null)
+        if (BlockedItems.IsBlockedType(__instance))
         {
             return;
         }

@@ -1,4 +1,5 @@
 ﻿using HarmonyLib;
+using NetworkingRework.Utils;
 using Photon.Pun;
 using UnityEngine;
 
@@ -13,21 +14,17 @@ public static class GrabAddHook
         var view = __instance.GetComponent<PhotonView>();
         if (view == null) return;
 
-        if (__instance.GetComponentInParent<Enemy>() != null ||
-            __instance.GetComponentInParent<EnemyRigidbody>() != null ||
-            __instance.GetComponent<Enemy>() != null ||
-            __instance.GetComponent<EnemyRigidbody>() != null ||
-            __instance.GetComponent<PhysGrabHinge>() != null)
+        if (BlockedItems.IsBlockedType(__instance))
         {
             return;
         }
 
         FakeOwnershipData.AddGrabber(view);
+        FakeOwnershipData.SetNetworkGrabbed(view);
 
         if (PhotonNetwork.LocalPlayer.ActorNumber == PhotonNetwork.GetPhotonView(photonViewID).OwnerActorNr)
         {
             // auto added with mono
-            FakeOwnershipData.AddItemToCart(view);
             FakeOwnershipData.SetLocallyGrabbed(view, true);
             FakeOwnershipData.SimulateOwnership(view);
         }
@@ -43,23 +40,25 @@ public static class GrabReleaseHook
         var view = __instance.GetComponent<PhotonView>();
         if (view == null) return;
 
-        if (__instance.GetComponentInParent<Enemy>() != null ||
-            __instance.GetComponentInParent<EnemyRigidbody>() != null ||
-            __instance.GetComponent<Enemy>() != null ||
-            __instance.GetComponent<EnemyRigidbody>() != null ||
-            __instance.GetComponent<PhysGrabHinge>() != null)
+        if (BlockedItems.IsBlockedType(__instance))
         {
             return;
         }
 
         FakeOwnershipData.RemoveGrabber(view);
+        FakeOwnershipData.RemoveItemFromCart(view);
 
         if (PhotonNetwork.LocalPlayer.ActorNumber == PhotonNetwork.GetPhotonView(photonViewID).OwnerActorNr)
         {
             // auto added with mono
-            FakeOwnershipData.RemoveItemFromCart(view);
             FakeOwnershipData.SetRecentlyThrown(view);
             FakeOwnershipData.SetLocallyGrabbed(view, false);
+
+            var ownershipController = __instance.GetComponent<FakeOwnershipController>();
+            if (ownershipController != null)
+            {
+                //ownershipController.HardSyncFromThrow();
+            }
         }
     }
 }
