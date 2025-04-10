@@ -7,16 +7,18 @@ using Photon.Realtime;
 using static DelayedReleaseHandler;
 using System.Collections;
 
-// This class is to sync the end of throwing.
-// With our current setup, the player who thinks they are performing all
-// calculations will intrinsically desync with the host. This system caches
-// all movements while grabbing (not velo and rot, just mouse movements), holds the GrabEndedRPC
-// for ping + host ping seconds, then while this hold is taking place, continue to send past mouse movements
-// in hopes to closely simulate the throw. After the time is finished, the grab is released.
+// Responsible for syncing PhysGrabber right before releasing an object
+// When the client releases, we wait a new frame and send the PhysGrabber
+// data stored before releasing in our PhotonStream, essentially duplicating the frame
+// in hopes the throw is at least similar to the client's perspective.
+
+// Seems to help a little bit, but not enough to rely on it
 [HarmonyPatch(typeof(PhysGrabObject), "GrabEnded")]
 public static class DelayedReleasePatch
 {
     public static float lastSyncTS;
+
+    // first method called when a release is done
     [HarmonyPrefix]
     public static bool Prefix(PhysGrabObject __instance)
     {
@@ -50,6 +52,7 @@ public static class DelayedReleasePatch
         return false;
     }
 
+    // mimics the behavior of the above method - sending an rpc, rpc is sent in our delayed sync
     public static void PerformGrabEndedLocally(PhysGrabObject __instance, PhysGrabber player)
     {
         if (!__instance.grabbedLocal)
@@ -89,6 +92,9 @@ public static class DelayedReleasePatch
     
 }
 
+// host sends this rpc method, we call this locally immediately, so block the next incoming
+// now that i think about it, a deactivation by another client could potentially desync
+// so this needs some work
 [HarmonyPatch(typeof(PhysGrabber), "PhysGrabBeamDeactivateRPC")]
 public static class PreventPrematureRPC
 {
