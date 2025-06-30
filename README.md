@@ -1,9 +1,10 @@
 # NetworkingReworked
-**(Now redone from previous version this week, solo-client supported)**
 
-**NetworkingReworked** is a client-side mod for REPO that makes multiplayer feel like singleplayer. No more input lag, rubberbanding, or weird delay when picking up objects.
+**NetworkingReworked** is a client-side mod for REPO that makes multiplayer feel like singleplayer. No more rubberbanding, or weird delay when picking up objects.
 
-This mod doesn't change the host or the server. It just makes your game respond the way it *should*.
+Development for this mod has discontinued due to other projects, maybe someone will find it useful in making their own. I suggest if you want to attempt to update this, make a version that requires both host & client mod installation. It isn't worth the headache and syncing won't be perfect without cohesive ownership handoffs. If your goal is for this to be independent from the host, I'd focus on making more assertive syncing measures after the client has released the object, and meticulously managing interactions between unowned/owned objects. This is where the biggest issues occur. One example being the movement of carts with items inside. Clients independently evaluate item damage, and your client might interpret a gameobject destruction before the host does or vice versa. The host then proceeds to sent Photon updates which your client doesn't know how to interpret, or you end up with a ghost object because it's actually destroyed. Item damage itself is strangely handled in this game and I'd take the time to evaluate how exactly it's done in terms of updates. In some scenarios, it appears the client interprets the damage itself, and in others, it appears the client takes the host's update. I'd probably just prevent your client from interpretting any sort of damage, unless you're the host (which you wouldn't really need this mod?). Good luck, feel free to reach out to me if you have any questions or suggestions.
+
+This mod doesn't change the host or the server. It just makes your game respond the way it should.
 
 ---
 
@@ -17,8 +18,6 @@ REPO was designed so the host controls nearly everything. That means when you tr
 - When you grab or throw something, it's fully simulated on your side immediately.
 - If you stop interacting, the object gradually re-syncs with the host to avoid glitches.
 - If someone else grabs it, or it behaves unexpectedly (like from a collision), your control is gracefully handed back.
-
-The result? Everything just feels responsive. Picking up and throwing items, dragging carts, and interacting with the world feels like it does in singleplayer.
 
 ---
 
@@ -57,7 +56,7 @@ Every single interactable object in REPO is a `PhysGrabObject`, which implements
 
 However, in vanilla REPO multiplayer, only the **MasterClient** has full authority over physics objects. Clients must wait for updates from the host, resulting in **laggy**, **stuttery**, or even **desynced** physics—especially for fast-moving or frequently manipulated items like carts, doors, and throwable objects.
 
-I rewrote the networking logic to give each client **predictive authority** over physics objects *as if they were in singleplayer*. 
+I rewrote the networking logic to give each client **predictive authority** over physics objects as if they were in singleplayer. 
 
 It turns out Photon doesn't like you manipulating fields via Reflection as a most of their exposed methods reference the same fields, for example I rewrote the getter for `PhotonView.IsMine` which resulted in `OnPhotonSerializeView` calls disallowing client fake owning clients from calling `stream.ReceiveNext()`. I needed to stream the true host location of the object to facilitate the sync behavior, so to get around this, I wrote a patch that allowed the client to access the buffer via `OnSerializeRead`. Surprisingly, this method still intakes data regardless of `PhotonView.IsMine` status. The prefix parses this data into a caching system which is used to apply extrapolation through velocity, position, and rotation adjustments. Additionally, when objects become still, the setup forcefully sets them to the true location (as long as another player isn't holding the object, the object will resync itself in that case).
 
