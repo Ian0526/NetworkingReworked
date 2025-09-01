@@ -1,4 +1,4 @@
-﻿using UnityEngine;
+using UnityEngine;
 using Photon.Pun;
 using System.Reflection;
 using static PhysGrabInCart;
@@ -16,6 +16,9 @@ public class FakeOwnershipController : MonoBehaviourPun
     private PhysGrabCart cart;
 
     private bool isSoftSyncing = false;
+    
+    // 🔧 Новое поле для хранения исходного состояния isKinematic
+    private bool wasKinematic;
 
     private void Awake()
     {
@@ -77,8 +80,12 @@ public class FakeOwnershipController : MonoBehaviourPun
 
         rb.position = hostState.position;
         rb.rotation = hostState.rotation;
-        rb.velocity = hostState.velocity;
-        rb.angularVelocity = hostState.angularVelocity;
+        // 🔧 Добавлена проверка isKinematic
+        if (!rb.isKinematic)
+        {
+            rb.velocity = hostState.velocity;
+            rb.angularVelocity = hostState.angularVelocity;
+        }
     }
 
     private void UpdateItemsInCart()
@@ -118,8 +125,12 @@ public class FakeOwnershipController : MonoBehaviourPun
 
         rb.position = Vector3.Lerp(rb.position, hostState.position, 0.075f);
         rb.rotation = Quaternion.Slerp(rb.rotation, hostState.rotation, 0.075f);
-        rb.velocity = Vector3.Lerp(rb.velocity, hostState.velocity, 0.075f);
-        rb.angularVelocity = Vector3.Lerp(rb.angularVelocity, hostState.angularVelocity, 0.075f);
+        // 🔧 Добавлена проверка isKinematic
+        if (!rb.isKinematic)
+        {
+            rb.velocity = Vector3.Lerp(rb.velocity, hostState.velocity, 0.075f);
+            rb.angularVelocity = Vector3.Lerp(rb.angularVelocity, hostState.angularVelocity, 0.075f);
+        }
     }
 
     private bool CartIsBeingHeld()
@@ -143,10 +154,16 @@ public class FakeOwnershipController : MonoBehaviourPun
 
         FakeOwnershipData.SimulateOwnership(view);
 
+        // 🔧 Сохраняем и изменяем isKinematic при захвате
+        if (rb != null)
+        {
+            wasKinematic = rb.isKinematic;
+            rb.isKinematic = false;
+        }
+
         var hinge = GetComponentInParent<PhysGrabHinge>();
         if (hinge != null)
         {
-
             // disabled for now because the networking for doors suck
             //hinge.GetComponent<Rigidbody>().isKinematic = false;
         }
@@ -155,6 +172,12 @@ public class FakeOwnershipController : MonoBehaviourPun
     public void SyncAfterRelease()
     {
         if (view == null) return;
+
+        // 🔧 Восстанавливаем исходное состояние isKinematic при отпускании
+        if (rb != null)
+        {
+            rb.isKinematic = wasKinematic;
+        }
 
         OverwriteStoredNetworkData();
 
@@ -199,8 +222,12 @@ public class FakeOwnershipController : MonoBehaviourPun
 
             rb.position = Vector3.Lerp(startPos, hostState.position, progress);
             rb.rotation = Quaternion.Slerp(startRot, hostState.rotation, progress);
-            rb.velocity = Vector3.Lerp(startVel, hostState.velocity, progress);
-            rb.angularVelocity = Vector3.Lerp(startAngVel, hostState.angularVelocity, progress);
+            // 🔧 Добавлена проверка isKinematic
+            if (!rb.isKinematic)
+            {
+                rb.velocity = Vector3.Lerp(startVel, hostState.velocity, progress);
+                rb.angularVelocity = Vector3.Lerp(startAngVel, hostState.angularVelocity, progress);
+            }
 
             yield return new WaitForFixedUpdate();
             t += Time.fixedDeltaTime;
@@ -209,8 +236,12 @@ public class FakeOwnershipController : MonoBehaviourPun
         // Finalize the cart
         rb.position = hostState.position;
         rb.rotation = hostState.rotation;
-        rb.velocity = hostState.velocity;
-        rb.angularVelocity = hostState.angularVelocity;
+        // 🔧 Добавлена проверка isKinematic
+        if (!rb.isKinematic)
+        {
+            rb.velocity = hostState.velocity;
+            rb.angularVelocity = hostState.angularVelocity;
+        }
 
         isSoftSyncing = false;
 
@@ -264,8 +295,12 @@ public class FakeOwnershipController : MonoBehaviourPun
 
             rb.position = Vector3.Lerp(startPos, hostState.position, progress);
             rb.rotation = Quaternion.Slerp(startRot, hostState.rotation, progress);
-            rb.velocity = Vector3.Lerp(startVel, hostState.velocity, progress);
-            rb.angularVelocity = Vector3.Lerp(startAngVel, hostState.angularVelocity, progress);
+            // 🔧 Добавлена проверка isKinematic
+            if (!rb.isKinematic)
+            {
+                rb.velocity = Vector3.Lerp(startVel, hostState.velocity, progress);
+                rb.angularVelocity = Vector3.Lerp(startAngVel, hostState.angularVelocity, progress);
+            }
 
             yield return new WaitForFixedUpdate();
             t += Time.fixedDeltaTime;
@@ -273,8 +308,12 @@ public class FakeOwnershipController : MonoBehaviourPun
 
         rb.position = hostState.position;
         rb.rotation = hostState.rotation;
-        rb.velocity = hostState.velocity;
-        rb.angularVelocity = hostState.angularVelocity;
+        // 🔧 Добавлена проверка isKinematic
+        if (!rb.isKinematic)
+        {
+            rb.velocity = hostState.velocity;
+            rb.angularVelocity = hostState.angularVelocity;
+        }
 
         isSoftSyncing = false;
     }
@@ -304,8 +343,12 @@ public class FakeOwnershipController : MonoBehaviourPun
         SetField("prevRotation", currentRotation);
         SetField("smoothedRotation", currentRotation);
 
-        SetField("receivedVelocity", rb.velocity);
-        SetField("receivedAngularVelocity", rb.angularVelocity);
+        // 🔧 Добавлена проверка isKinematic перед сохранением скорости
+        if (!rb.isKinematic)
+        {
+            SetField("receivedVelocity", rb.velocity);
+            SetField("receivedAngularVelocity", rb.angularVelocity);
+        }
 
         SetField("m_Distance", 0f);
         SetField("m_Angle", 0f);
